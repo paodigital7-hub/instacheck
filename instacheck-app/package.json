@@ -1,0 +1,9 @@
+{
+  "name": "instacheck",
+  "version": "1.0.0",
+  "description": "InstaCheck — diagnóstico de Instagram con IA para The Content Room (Pao Digital)",
+  "private": true,
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1"
+  }
+}

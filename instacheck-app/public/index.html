@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>InstaCheck · The Content Room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --cream:#fff9e7; --purple:#5f3073; --lav:#a98bc4; --lavSoft:#ede3f5;
+    --green:#8da633; --ink:#2a1533; --red:#c94b4b; --amber:#d99a2b; --muted:#9a8aa2;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Poppins',system-ui,sans-serif;background:var(--cream);color:var(--ink);line-height:1.5}
+  .wrap{max-width:720px;margin:0 auto;padding-bottom:44px}
+
+  /* Encabezado limpio, texto a la izquierda */
+  header.hero{background:var(--purple);color:var(--cream);padding:56px 30px 60px}
+  .kicker{font-size:12.5px;letter-spacing:2px;opacity:.8;margin-bottom:18px}
+  h1.title{font-size:56px;margin:0 0 22px;font-weight:700;letter-spacing:-1.5px;line-height:1}
+  h1.title span{color:var(--green)}
+  .hero p{font-size:16px;line-height:1.7;opacity:.96;margin:0 0 14px;max-width:460px}
+  .hero p.small{font-size:15px;opacity:.85;margin:0}
+
+  .card{background:#fff;border-radius:18px;padding:30px;margin:-26px 20px 0;box-shadow:0 6px 24px rgba(95,48,115,.14)}
+  label.lbl{display:block;font-size:13px;font-weight:700;color:var(--purple);margin-bottom:7px}
+  input[type=text]{width:100%;padding:13px 15px;border-radius:11px;border:1.5px solid #e6dcc9;font-size:15px;font-family:inherit;color:var(--ink)}
+  .hint{font-size:13px;color:var(--muted);line-height:1.5}
+
+  .btn{background:var(--green);color:#fff;border:none;border-radius:12px;padding:15px 22px;font-size:15.5px;font-weight:700;font-family:inherit;cursor:pointer;width:100%}
+  .btn:disabled{opacity:.5;cursor:default}
+  .btn-ghost{background:transparent;color:var(--purple);border:1.5px solid var(--purple);border-radius:12px;padding:12px 20px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer}
+
+  .drop{border:2px dashed var(--lav);border-radius:16px;padding:34px 16px;text-align:center;cursor:pointer;transition:.15s;background:#fdfaff}
+  .drop:hover{border-color:var(--purple);background:#faf4ff}
+  .drop .big{font-size:34px}
+  .preview{display:flex;align-items:center;gap:14px;margin-top:4px}
+  .preview img{width:60px;height:60px;border-radius:10px;object-fit:cover;border:1px solid #e6dcc9}
+  .link-btn{background:none;border:none;color:var(--purple);font-weight:700;cursor:pointer;font-family:inherit;font-size:13px}
+
+  /* Ficha */
+  main{padding:0 20px}
+  .score-hero{margin:0 20px;background:var(--purple);color:var(--cream);border-radius:20px;padding:30px}
+  .score-row{display:flex;align-items:center;gap:20px;margin-top:24px;background:rgba(255,255,255,.1);border-radius:16px;padding:20px 22px}
+  .ring{border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+  .ring .inner{border-radius:50%;background:var(--cream);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+  .ring .num{font-weight:700;color:var(--ink)}
+  .ring .den{font-size:9.5px;color:var(--muted);margin-top:1px}
+  .ring-lg{width:78px;height:78px}.ring-lg .inner{width:64px;height:64px}.ring-lg .num{font-size:26px}
+  .ring-sm{width:64px;height:64px}.ring-sm .inner{width:50px;height:50px}.ring-sm .num{font-size:19px}
+
+  .area{background:#fff;border-radius:16px;overflow:hidden;border:1px solid var(--lavSoft);margin-top:14px}
+  .area-head{width:100%;display:flex;align-items:center;gap:18px;padding:20px;background:none;border:none;cursor:pointer;text-align:left;font-family:inherit}
+  .area-title{font-weight:700;font-size:17px}
+  .area-sub{font-size:13px;color:var(--muted);margin-top:2px}
+  .plus{font-size:24px;color:var(--purple);transition:transform .2s}
+  .plus.open{transform:rotate(45deg)}
+  .note{border-radius:12px;padding:15px 17px;margin-bottom:11px}
+  .note-label{font-size:11.5px;font-weight:700;margin-bottom:5px}
+  .note.ok{background:#f3f7e6;border-left:4px solid var(--green)}
+  .note.ok .note-label{color:#5f7016}
+  .note.bad{background:var(--lavSoft);border-left:4px solid var(--red)}
+  .note.bad .note-label{color:var(--red)}
+  .note-text{font-size:14px;line-height:1.6}
+  .closing{margin-top:26px;background:var(--purple);color:var(--cream);border-radius:18px;padding:30px}
+  .closing h2{font-size:17px;margin:0 0 10px;font-weight:700}
+  .closing p{margin:0;line-height:1.7;font-size:14.5px;opacity:.96}
+  .foot{text-align:center;margin-top:30px;font-size:12.5px;color:var(--muted)}
+  .center{text-align:center;margin-top:24px}
+
+  .loader{text-align:center;padding:38px 10px}
+  .spinner{width:48px;height:48px;border:4px solid var(--lavSoft);border-top-color:var(--purple);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loader p{font-size:15px;margin:6px 0 0}
+  .loader .sub{font-size:13px;color:var(--muted);margin-top:4px}
+  .error{background:#fdecec;border:1px solid #f3c6c6;color:#9a3030;border-radius:12px;padding:14px 16px;font-size:14px;margin-top:16px;line-height:1.5}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== PASO 1: SUBIR ===== -->
+  <section id="view-intro">
+    <header class="hero">
+      <div class="kicker">BONUS · THE CONTENT ROOM</div>
+      <h1 class="title">Insta<span>Check</span></h1>
+      <p>Sube una captura de tu perfil y te damos tu <strong>puntaje</strong> y una ficha de dónde está tu Instagram hoy.</p>
+      <p class="small">Es tu punto de partida: desde aquí mejoramos juntas todo lo que vamos a ver en la comunidad. 💜</p>
+    </header>
+    <div class="card">
+      <label class="lbl" for="nombre">Tu nombre</label>
+      <input type="text" id="nombre" placeholder="Ej. Juliana" />
+
+      <label class="lbl" style="margin-top:28px">Sube la captura de tu perfil</label>
+      <p class="hint" style="margin:0 0 14px">La pantalla que sale al entrar a tu cuenta: foto, bio y tus primeros posts. Entre más completa, mejor el diagnóstico.</p>
+
+      <div id="drop" class="drop">
+        <div class="big">📷</div>
+        <div style="margin-top:10px;font-weight:700;color:var(--purple)">Toca para elegir tu captura</div>
+        <div class="hint" style="margin-top:2px">o arrástrala aquí</div>
+      </div>
+      <input type="file" id="file" accept="image/*" class="hidden" />
+
+      <div id="preview" class="preview hidden" style="margin-top:16px">
+        <img id="preview-img" alt="tu captura" />
+        <button class="link-btn" id="change">Cambiar captura</button>
+      </div>
+
+      <div id="error-intro" class="error hidden"></div>
+
+      <button class="btn" id="go" style="margin-top:28px" disabled>Analizar mi perfil</button>
+      <p class="hint" style="text-align:center;margin:14px 0 0">Tu captura se usa solo para el diagnóstico. No se guarda.</p>
+    </div>
+    <div class="foot">InstaCheck · Bonus de The Content Room · Pao Digital</div>
+  </section>
+
+  <!-- ===== PASO 2: CARGANDO ===== -->
+  <section id="view-loading" class="hidden">
+    <header class="hero" style="padding:50px 30px">
+      <h1 class="title" style="font-size:28px;margin:0">Analizando tu perfil…</h1>
+    </header>
+    <div class="card">
+      <div class="loader">
+        <div class="spinner"></div>
+        <p id="load-msg">Mirando tu foto y tu bio…</p>
+        <p class="sub">Esto toma unos segundos. No cierres la página.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PASO 3: FICHA ===== -->
+  <section id="view-ficha" class="hidden">
+    <div class="score-hero">
+      <div class="kicker" style="margin-bottom:10px">INSTACHECK · TU PUNTO DE PARTIDA</div>
+      <h1 class="title" id="f-nombre" style="font-size:28px;margin:0 0 3px;letter-spacing:0"></h1>
+      <div id="f-usuario" style="opacity:.9;font-size:15px"></div>
+      <div class="score-row">
+        <div class="ring ring-lg" id="f-ring"><div class="inner"><span class="num" id="f-ring-num"></span><span class="den">/10</span></div></div>
+        <div style="font-size:14px;line-height:1.6;opacity:.95"><span id="f-resumen"></span></div>
+      </div>
+    </div>
+    <main>
+      <div id="f-areas" style="margin-top:24px;display:grid;gap:14px"></div>
+      <section class="closing">
+        <h2>Y ahora, lo mejor: no lo haces sola</h2>
+        <p id="f-siguiente"></p>
+      </section>
+      <div class="center">
+        <button class="btn-ghost" id="restart">Analizar otra captura</button>
+      </div>
+    </main>
+    <div class="foot">InstaCheck · Bonus de The Content Room · Pao Digital</div>
+  </section>
+
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let imageData = null, imageMedia = null;
+
+const loadMsgs = [
+  "Mirando tu foto y tu bio…",
+  "Revisando tu feed y tus posts…",
+  "Analizando tus ganchos…",
+  "Armando tus recomendaciones…",
+];
+
+$("drop").addEventListener("click", () => $("file").click());
+$("change").addEventListener("click", () => $("file").click());
+["dragover","dragenter"].forEach(ev => $("drop").addEventListener(ev, e => e.preventDefault()));
+$("drop").addEventListener("drop", e => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]); });
+$("file").addEventListener("change", e => { if (e.target.files?.[0]) handleFile(e.target.files[0]); });
+
+function handleFile(file){
+  if(!file.type.startsWith("image/")){ showError("intro","Eso no parece una imagen. Sube una captura de pantalla."); return; }
+  hideError("intro");
+  const reader = new FileReader();
+  reader.onload = (ev) => compress(ev.target.result);
+  reader.readAsDataURL(file);
+}
+
+function compress(dataUrl){
+  const img = new Image();
+  img.onload = () => {
+    const maxW = 1200;
+    const scale = Math.min(1, maxW / img.width);
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width * scale; canvas.height = img.height * scale;
+    canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+    const out = canvas.toDataURL("image/jpeg", 0.85);
+    imageData = out.split(",")[1]; imageMedia = "image/jpeg";
+    $("preview-img").src = out;
+    $("preview").classList.remove("hidden");
+    $("drop").classList.add("hidden");
+    $("go").disabled = false;
+  };
+  img.src = dataUrl;
+}
+
+$("go").addEventListener("click", analizar);
+
+async function analizar(){
+  show("loading");
+  let i = 0; $("load-msg").textContent = loadMsgs[0];
+  const rot = setInterval(() => { i=(i+1)%loadMsgs.length; $("load-msg").textContent = loadMsgs[i]; }, 2500);
+  try{
+    const r = await fetch("/api/analizar", {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ image: imageData, mediaType: imageMedia, nombre: $("nombre").value })
+    });
+    const data = await r.json();
+    clearInterval(rot);
+    if(!r.ok){ show("intro"); showError("intro", data.error || "Algo salió mal. Intenta de nuevo."); return; }
+    pintarFicha(data); show("ficha"); window.scrollTo(0,0);
+  }catch(e){
+    clearInterval(rot); show("intro");
+    showError("intro","No pude conectar. Revisa tu internet e intenta de nuevo.");
+  }
+}
+
+function scoreColor(n){ return n<=4 ? "var(--red)" : n<=6 ? "var(--amber)" : "var(--green)"; }
+function ringHtml(n, small){
+  const pct=(n/10)*100, cls = small ? "ring ring-sm" : "ring ring-lg";
+  return `<div class="${cls}" style="background:conic-gradient(${scoreColor(n)} ${pct}%, var(--lavSoft) ${pct}%)">
+    <div class="inner"><span class="num">${n}</span><span class="den">/10</span></div></div>`;
+}
+
+function pintarFicha(d){
+  const nombre = ($("nombre").value || "").trim();
+  $("f-nombre").textContent = nombre || "Tu diagnóstico";
+  $("f-usuario").textContent = d.usuario || "";
+  $("f-resumen").textContent = d.resumen || "";
+
+  const prom = d.areas.reduce((a,s)=>a+(s.puntaje||0),0)/d.areas.length;
+  const promR = Math.round(prom*10)/10;
+  $("f-ring").style.background = `conic-gradient(${scoreColor(promR)} ${(promR/10)*100}%, var(--lavSoft) ${(promR/10)*100}%)`;
+  $("f-ring-num").textContent = promR;
+
+  $("f-areas").innerHTML = d.areas.map((a, idx) => `
+    <div class="area">
+      <button class="area-head" onclick="toggleArea(${idx})">
+        ${ringHtml(a.puntaje, true)}
+        <div style="flex:1"><div class="area-title">${escapeHtml(a.titulo)}</div><div class="area-sub">${escapeHtml(a.subtitulo||"")}</div></div>
+        <div class="plus" id="plus-${idx}">+</div>
+      </button>
+      <div class="area-body hidden" id="body-${idx}" style="padding:0 20px 20px">
+        ${(a.notas||[]).map(n => `
+          <div class="note ${n.tipo==='ok'?'ok':'bad'}">
+            <div class="note-label">${n.tipo==='ok'?'Lo haces bien':'Para mejorar'}</div>
+            <div class="note-text">${escapeHtml(n.texto)}</div>
+          </div>`).join("")}
+      </div>
+    </div>`).join("");
+
+  $("f-siguiente").textContent = d.siguientePaso || "Empieza por el área con el puntaje más bajo. Cualquier duda, tráela a The Content Room. 💜";
+}
+
+function toggleArea(i){
+  const body = $("body-"+i), plus = $("plus-"+i);
+  const isHidden = body.classList.contains("hidden");
+  document.querySelectorAll(".area-body").forEach(b => b.classList.add("hidden"));
+  document.querySelectorAll(".plus").forEach(p => p.classList.remove("open"));
+  if(isHidden){ body.classList.remove("hidden"); plus.classList.add("open"); }
+}
+
+function escapeHtml(s){ return (s||"").replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function show(v){ ["intro","loading","ficha"].forEach(x => $("view-"+x).classList.add("hidden")); $("view-"+v).classList.remove("hidden"); }
+function showError(where,msg){ const e=$("error-"+where); e.textContent=msg; e.classList.remove("hidden"); }
+function hideError(where){ $("error-"+where).classList.add("hidden"); }
+
+$("restart").addEventListener("click", () => {
+  imageData=null; $("file").value="";
+  $("preview").classList.add("hidden"); $("drop").classList.remove("hidden");
+  $("go").disabled=true; $("nombre").value="";
+  show("intro"); window.scrollTo(0,0);
+});
+</script>
+</body>
+</html>
