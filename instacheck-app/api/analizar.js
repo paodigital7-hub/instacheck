@@ -1,4 +1,4 @@
-   // =====================================================================
+// =====================================================================
 // InstaCheck — Función serverless (Vercel)
 // Recibe la captura del perfil, la manda a Claude (con visión),
 // y devuelve el diagnóstico estructurado con el criterio de Pao.
@@ -96,14 +96,10 @@ export default async function handler(req, res) {
             { type: "text", text: userText },
           ],
         },
-        // Prellenamos la respuesta del modelo para forzar JSON directo
-        { role: "assistant", content: "{" },
       ],
     });
 
     let raw = message.content?.[0]?.text?.trim() || "";
-    // Como forzamos el inicio de la respuesta con "{", la reconstruimos:
-    if (!raw.startsWith("{")) raw = "{" + raw;
     // Quita backticks si los hubiera
     raw = raw.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
 
@@ -121,7 +117,10 @@ export default async function handler(req, res) {
 
     return res.status(200).json(data);
   } catch (err) {
-    console.error("InstaCheck error:", err);
+    // Log detallado para depurar desde Vercel
+    console.error("InstaCheck error status:", err?.status);
+    console.error("InstaCheck error message:", err?.message);
+    console.error("InstaCheck error body:", JSON.stringify(err?.error || err?.response?.data || {}));
     const msg = err?.status === 401
       ? "Falta configurar la API key en el servidor."
       : "Algo salió mal al analizar tu perfil. Intenta de nuevo en un momento.";
