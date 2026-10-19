@@ -1,4 +1,4 @@
-// =====================================================================
+   // =====================================================================
 // InstaCheck — Función serverless (Vercel)
 // Recibe la captura del perfil, la manda a Claude (con visión),
 // y devuelve el diagnóstico estructurado con el criterio de Pao.
@@ -7,6 +7,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+function tryParse(s){ try { return JSON.parse(s); } catch(e){ return null; } }
 
 // El criterio de Pao, destilado. Esto es lo que hace el diagnóstico.
 const SYSTEM_PROMPT = `Eres la asistente de diagnóstico de "InstaCheck", un producto de Pao Digital (Paola Cárcamo), estratega de marca personal. Analizas una captura de pantalla del perfil de Instagram de una emprendedora y devuelves un diagnóstico claro, cercano y accionable, en el estilo de Pao: directo pero cálido, en español, tuteando, sin jerga de marketing que la persona no entendería.
@@ -94,18 +96,27 @@ export default async function handler(req, res) {
             { type: "text", text: userText },
           ],
         },
+        // Prellenamos la respuesta del modelo para forzar JSON directo
+        { role: "assistant", content: "{" },
       ],
     });
 
     let raw = message.content?.[0]?.text?.trim() || "";
-    // Por si el modelo envolviera en backticks pese a la instrucción
-    raw = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
+    // Como forzamos el inicio de la respuesta con "{", la reconstruimos:
+    if (!raw.startsWith("{")) raw = "{" + raw;
+    // Quita backticks si los hubiera
+    raw = raw.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
 
-    let data;
-    try {
-      data = JSON.parse(raw);
-    } catch (e) {
-      return res.status(502).json({ error: "No pude leer bien el diagnóstico. Intenta de nuevo con una captura más clara." });
+    let data = tryParse(raw);
+    // Si aún falla, intenta extraer el bloque {...} más grande del texto
+    if (!data) {
+      const first = raw.indexOf("{");
+      const last = raw.lastIndexOf("}");
+      if (first !== -1 && last > first) data = tryParse(raw.slice(first, last + 1));
+    }
+    if (!data || !Array.isArray(data.areas)) {
+      console.error("Parse falló. Respuesta cruda:", raw.slice(0, 500));
+      return res.status(502).json({ error: "No pude leer bien el diagnóstico. Intenta de nuevo en un momento." });
     }
 
     return res.status(200).json(data);
