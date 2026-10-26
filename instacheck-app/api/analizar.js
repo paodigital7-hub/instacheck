@@ -62,7 +62,7 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto antes ni después, sin ma
   "siguientePaso": "1-2 frases: por dónde empezar (el área más floja), con tono de comunidad de The Content Room."
 }
 
-Cada área lleva entre 1 y 3 notas. Usa "ok" para lo que ya hace bien y "bad" para lo que debe mejorar. Sé específica: en vez de "mejora tu bio", escribe la propuesta concreta. Los puntajes deben ser honestos y coherentes con las notas (muchas notas "bad" = puntaje bajo).`;
+Cada área lleva entre 1 y 2 notas (máximo 3). Usa "ok" para lo que ya hace bien y "bad" para lo que debe mejorar. Sé específica pero CONCISA: cada nota máximo 2 frases cortas. En vez de "mejora tu bio", escribe la propuesta concreta en pocas palabras. Los puntajes deben ser honestos y coherentes con las notas (muchas notas "bad" = puntaje bajo). El resumen: máximo 3 frases. Mantén todo compacto para que el diagnóstico completo sea breve y fácil de leer.`;
 
 export default async function handler(req, res) {
   // CORS básico
@@ -86,7 +86,7 @@ export default async function handler(req, res) {
 
     const message = await anthropic.messages.create({
       model: "claude-sonnet-5-5",
-      max_tokens: 2500,
+      max_tokens: 4000,
       system: SYSTEM_PROMPT,
       messages: [
         {
@@ -98,6 +98,11 @@ export default async function handler(req, res) {
         },
       ],
     });
+
+    // Si la respuesta se cortó por límite de tokens, lo sabremos aquí
+    if (message.stop_reason === "max_tokens") {
+      console.error("Respuesta cortada por max_tokens. Sube el límite.");
+    }
 
     let raw = message.content?.[0]?.text?.trim() || "";
     // Quita backticks si los hubiera
