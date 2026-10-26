@@ -6,6 +6,7 @@
 <title>InstaCheck · The Content Room</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   :root{
     --cream:#fff9e7; --purple:#5f3073; --lav:#a98bc4; --lavSoft:#ede3f5;
@@ -97,7 +98,16 @@
   .loader .sub{font-size:13px;color:var(--muted);margin-top:4px}
   .error{background:#fdecec;border:1px solid #f3c6c6;color:#9a3030;border-radius:12px;padding:14px 16px;font-size:14px;margin-top:16px;line-height:1.5}
   .info{background:#f3f0fa;border:1px solid #d9c9ec;color:#5f3073;border-radius:12px;padding:16px 18px;font-size:14px;margin-top:16px;line-height:1.6}
-  .hidden{display:none}
+  .hidden{display:none !important}
+  /* Modal de confirmación */
+  .modal-overlay{position:fixed;inset:0;background:rgba(42,21,51,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .modal{background:#fff;border-radius:20px;padding:30px 26px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(42,21,51,.3);text-align:center}
+  .modal-emoji{font-size:40px}
+  .modal h3{font-size:20px;font-weight:700;color:var(--purple);margin:8px 0 16px}
+  .modal-list{text-align:left;margin:0 0 22px;padding:0;list-style:none}
+  .modal-list li{font-size:14.5px;line-height:1.6;color:var(--ink);padding:10px 0 10px 28px;position:relative;border-bottom:1px solid var(--lavSoft)}
+  .modal-list li:last-child{border-bottom:none}
+  .modal-list li::before{content:"✓";position:absolute;left:0;top:10px;color:var(--green);font-weight:700}
   input[type=password]{width:100%;box-sizing:border-box;padding:13px 15px;border-radius:11px;border:1.5px solid #e6dcc9;font-size:15px;font-family:inherit;color:var(--ink)}
 </style>
 </head>
@@ -178,7 +188,7 @@
       <h1 class="title" id="f-nombre" style="font-size:28px;margin:0 0 3px;letter-spacing:0"></h1>
       <div id="f-usuario" style="opacity:.9;font-size:15px"></div>
       <div class="score-row">
-        <div class="ring ring-lg" id="f-ring"><div class="inner"><span class="num" id="f-ring-num"></span><span class="den">/10</span></div></div>
+        <div id="f-ring" style="flex-shrink:0"></div>
         <div style="font-size:14px;line-height:1.6;opacity:.95"><span id="f-resumen"></span></div>
       </div>
     </div>
@@ -189,12 +199,27 @@
         <p id="f-siguiente"></p>
       </section>
       <div class="center">
-        <button class="btn-ghost" id="restart">Analizar otra captura</button>
+        <button class="btn" id="download" style="max-width:360px;margin:0 auto">⬇️ Descargar mi análisis (PDF)</button>
+        <div style="margin-top:14px"><button class="btn-ghost" id="restart">Analizar otra captura</button></div>
       </div>
     </main>
     <div class="foot">InstaCheck · Bonus de The Content Room · Pao Digital</div>
   </section>
 
+</div>
+
+<!-- ===== POP-UP de confirmación antes de analizar ===== -->
+<div id="modal-overlay" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-emoji">📸</div>
+    <h3>Antes de analizar</h3>
+    <ul class="modal-list">
+      <li>Solo puedes hacer <strong>1 análisis cada 7 días</strong>, así que aprovéchalo bien.</li>
+      <li>Revisa que tu captura esté <strong>completa y clara</strong>: que se vean tu foto, tu bio, tus botones y tus primeros posts.</li>
+    </ul>
+    <button class="btn" id="modal-confirm">Sí, mi captura está lista</button>
+    <button class="btn-ghost" id="modal-cancel" style="margin-top:12px;width:100%">Mejor la reviso</button>
+  </div>
 </div>
 
 <script>
@@ -280,7 +305,20 @@ function compress(dataUrl){
   img.src = dataUrl;
 }
 
-$("go").addEventListener("click", analizar);
+// El botón de analizar ahora abre el pop-up de confirmación
+$("go").addEventListener("click", () => {
+  // Si ya llegó al límite, avisamos de una sin abrir el modal
+  if(!puedeAnalizar()){
+    showInfo("intro", "Ya hiciste tu análisis de esta semana 💜 Si te quedó una duda, ponla en la pestaña de feedback de The Content Room y entre todas te ayudamos a resolverla.");
+    return;
+  }
+  $("modal-overlay").classList.remove("hidden");
+});
+$("modal-cancel").addEventListener("click", () => $("modal-overlay").classList.add("hidden"));
+$("modal-confirm").addEventListener("click", () => {
+  $("modal-overlay").classList.add("hidden");
+  analizar();
+});
 
 async function analizar(){
   // Límite: 1 análisis por semana
@@ -309,10 +347,26 @@ async function analizar(){
 }
 
 function scoreColor(n){ return n<=4 ? "var(--red)" : n<=6 ? "var(--amber)" : "var(--green)"; }
+// Anillo dibujado en SVG (se renderiza bien en pantalla Y en PDF)
 function ringHtml(n, small){
-  const pct=(n/10)*100, cls = small ? "ring ring-sm" : "ring ring-lg";
-  return `<div class="${cls}" style="background:conic-gradient(${scoreColor(n)} ${pct}%, var(--lavSoft) ${pct}%)">
-    <div class="inner"><span class="num">${n}</span><span class="den">/10</span></div></div>`;
+  const size = small ? 64 : 78;
+  const stroke = small ? 7 : 8;
+  const r = (size - stroke) / 2;
+  const cx = size/2, cy = size/2;
+  const circ = 2 * Math.PI * r;
+  const filled = (n/10) * circ;
+  const numSize = small ? 19 : 26;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex-shrink:0;display:block">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#ede3f5" stroke-width="${stroke}"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${scoreColor(n)}" stroke-width="${stroke}"
+      stroke-dasharray="${filled} ${circ}" stroke-linecap="round"
+      transform="rotate(-90 ${cx} ${cy})"/>
+    <circle cx="${cx}" cy="${cy}" r="${r - stroke/2 - 1}" fill="#fff9e7"/>
+    <text x="${cx}" y="${cy - 1}" text-anchor="middle" dominant-baseline="central"
+      font-family="Poppins,sans-serif" font-weight="700" font-size="${numSize}" fill="#2a1533">${n}</text>
+    <text x="${cx}" y="${cy + numSize/2 + 2}" text-anchor="middle" dominant-baseline="central"
+      font-family="Poppins,sans-serif" font-size="9.5" fill="#9a8aa2">/10</text>
+  </svg>`;
 }
 
 function pintarFicha(d){
@@ -323,8 +377,7 @@ function pintarFicha(d){
 
   const prom = d.areas.reduce((a,s)=>a+(s.puntaje||0),0)/d.areas.length;
   const promR = Math.round(prom*10)/10;
-  $("f-ring").style.background = `conic-gradient(${scoreColor(promR)} ${(promR/10)*100}%, var(--lavSoft) ${(promR/10)*100}%)`;
-  $("f-ring-num").textContent = promR;
+  $("f-ring").innerHTML = ringHtml(promR, false);
 
   $("f-areas").innerHTML = d.areas.map((a, idx) => `
     <div class="area">
@@ -366,6 +419,65 @@ $("restart").addEventListener("click", () => {
   $("go").disabled=true; $("nombre").value="";
   hideError("intro"); hideInfo("intro");
   show("intro"); window.scrollTo(0,0);
+});
+
+// ---- Descargar PDF del análisis ----
+$("download").addEventListener("click", () => {
+  const nombre = ($("nombre").value || "mi").trim();
+  // Abre TODAS las áreas para que el PDF las incluya completas
+  document.querySelectorAll(".area-body").forEach(b => b.classList.remove("hidden"));
+  document.querySelectorAll(".plus").forEach(p => p.classList.add("open"));
+
+  const ficha = $("view-ficha");
+  const btnOriginal = $("download").innerHTML;
+  $("download").innerHTML = "Generando tu PDF…";
+  $("download").disabled = true;
+
+  // Oculta los botones y los "+" de las secciones en el PDF
+  const botones = ficha.querySelector(".center");
+  botones.style.display = "none";
+  const plusEls = ficha.querySelectorAll(".plus");
+  plusEls.forEach(p => p.style.visibility = "hidden");
+
+  // Clono la ficha en un contenedor limpio con padding uniforme,
+  // así el PDF no arrastra márgenes raros ni espacio vacío arriba.
+  const wrap = document.createElement("div");
+  wrap.style.cssText = "background:#fff9e7;padding:20px 16px;width:720px;overflow:hidden";
+  const clon = ficha.cloneNode(true);
+  clon.className = ""; // quita 'view-ficha'/'hidden' y cualquier estilo heredado
+  clon.style.cssText = "display:block;height:auto";
+  // en el clon, quito márgenes laterales negativos para que no desborde
+  clon.querySelectorAll(".score-hero").forEach(e => e.style.margin = "0");
+  clon.querySelectorAll("main").forEach(e => { e.style.padding = "0"; e.style.marginTop = "14px"; });
+  clon.querySelector(".center")?.remove();
+  clon.querySelector(".foot")?.remove();
+  wrap.appendChild(clon);
+
+  function restaurar(){
+    botones.style.display = "";
+    plusEls.forEach(p => p.style.visibility = "");
+    $("download").innerHTML = btnOriginal;
+    $("download").disabled = false;
+  }
+
+  // Mido el alto real insertándolo un instante (visible, en flujo), luego lo saco.
+  document.body.appendChild(wrap);
+  const W = wrap.offsetWidth || 752;
+  const H = wrap.offsetHeight;
+  wrap.parentNode.removeChild(wrap);
+
+  const opt = {
+    margin: 0,
+    filename: `InstaCheck-${nombre}.pdf`,
+    image: { type: "jpeg", quality: 0.95 },
+    html2canvas: { scale: 2, backgroundColor: "#fff9e7", useCORS: true },
+    // Página del tamaño EXACTO del contenido: una sola hoja, sin huecos ni cortes
+    jsPDF: { unit: "px", hotfixes: ["px_scaling"], format: [W, H], orientation: "portrait" },
+  };
+  html2pdf().set(opt).from(wrap).save().then(restaurar).catch(() => {
+    restaurar();
+    showError("intro", "No pude generar el PDF. Intenta de nuevo.");
+  });
 });
 
 // ---- Arranque: login primero, salvo que ya haya entrado en esta sesión ----
