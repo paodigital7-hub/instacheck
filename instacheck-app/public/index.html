@@ -421,63 +421,65 @@ $("restart").addEventListener("click", () => {
   show("intro"); window.scrollTo(0,0);
 });
 
-// ---- Descargar PDF del análisis ----
-$("download").addEventListener("click", () => {
+// ---- Descargar PDF del análisis (A4, multipágina) ----
+$("download").addEventListener("click", async () => {
   const nombre = ($("nombre").value || "mi").trim();
-  // Abre TODAS las áreas para que el PDF las incluya completas
-  document.querySelectorAll(".area-body").forEach(b => b.classList.remove("hidden"));
-  document.querySelectorAll(".plus").forEach(p => p.classList.add("open"));
-
-  const ficha = $("view-ficha");
   const btnOriginal = $("download").innerHTML;
   $("download").innerHTML = "Generando tu PDF…";
   $("download").disabled = true;
 
-  // Oculta los botones y los "+" de las secciones en el PDF
-  const botones = ficha.querySelector(".center");
-  botones.style.display = "none";
-  const plusEls = ficha.querySelectorAll(".plus");
-  plusEls.forEach(p => p.style.visibility = "hidden");
-
-  // Clono la ficha en un contenedor limpio con padding uniforme,
-  // así el PDF no arrastra márgenes raros ni espacio vacío arriba.
+  // Clono la ficha en un contenedor limpio de ancho fijo (como A4),
+  // con TODO abierto y sin botones. El clon no afecta lo que ve el usuario.
+  const ancho = 800; // px de ancho de "lienzo" (proporción A4)
+  // Oculto la UI real y muestro el wrap en flujo normal mientras genero,
+  // así html2canvas lo captura completo (no funciona con elementos ocultos).
+  const wrapHost = document.querySelector(".wrap");
+  const hostDisplayPrev = wrapHost ? wrapHost.style.display : "";
   const wrap = document.createElement("div");
-  wrap.style.cssText = "background:#fff9e7;padding:20px 16px;width:720px;overflow:hidden";
-  const clon = ficha.cloneNode(true);
-  clon.className = ""; // quita 'view-ficha'/'hidden' y cualquier estilo heredado
+  wrap.style.cssText =
+    "background:#fff9e7;width:" + ancho + "px;max-width:100%;margin:0 auto;" +
+    "padding:28px 28px 36px;box-sizing:border-box";
+  const clon = $("view-ficha").cloneNode(true);
+  clon.className = "";
   clon.style.cssText = "display:block;height:auto";
-  // en el clon, quito márgenes laterales negativos para que no desborde
   clon.querySelectorAll(".score-hero").forEach(e => e.style.margin = "0");
-  clon.querySelectorAll("main").forEach(e => { e.style.padding = "0"; e.style.marginTop = "14px"; });
-  clon.querySelector(".center")?.remove();
+  clon.querySelectorAll("main").forEach(e => { e.style.padding = "0"; e.style.marginTop = "16px"; });
+  // ABRE todas las áreas para que el PDF incluya las recomendaciones completas
+  clon.querySelectorAll(".area-body").forEach(e => e.classList.remove("hidden"));
+  clon.querySelectorAll(".plus").forEach(e => e.remove());        // quita los "+"
+  clon.querySelector(".center")?.remove();                        // quita botones
   clon.querySelector(".foot")?.remove();
+  // evita que una tarjeta se parta a la mitad entre páginas
+  clon.querySelectorAll(".area, .score-hero, .closing").forEach(e => {
+    e.style.pageBreakInside = "avoid"; e.style.breakInside = "avoid";
+  });
   wrap.appendChild(clon);
+  if(wrapHost) wrapHost.style.display = "none";   // oculta la UI real
+  document.body.appendChild(wrap);                 // muestra el lienzo del PDF
+  window.scrollTo(0,0);
 
   function restaurar(){
-    botones.style.display = "";
-    plusEls.forEach(p => p.style.visibility = "");
+    if(wrap.parentNode) wrap.parentNode.removeChild(wrap);
+    if(wrapHost) wrapHost.style.display = hostDisplayPrev;
     $("download").innerHTML = btnOriginal;
     $("download").disabled = false;
   }
 
-  // Mido el alto real insertándolo un instante (visible, en flujo), luego lo saco.
-  document.body.appendChild(wrap);
-  const W = wrap.offsetWidth || 752;
-  const H = wrap.offsetHeight;
-  wrap.parentNode.removeChild(wrap);
-
-  const opt = {
-    margin: 0,
-    filename: `InstaCheck-${nombre}.pdf`,
-    image: { type: "jpeg", quality: 0.95 },
-    html2canvas: { scale: 2, backgroundColor: "#fff9e7", useCORS: true },
-    // Página del tamaño EXACTO del contenido: una sola hoja, sin huecos ni cortes
-    jsPDF: { unit: "px", hotfixes: ["px_scaling"], format: [W, H], orientation: "portrait" },
-  };
-  html2pdf().set(opt).from(wrap).save().then(restaurar).catch(() => {
+  try {
+    const opt = {
+      margin: [10, 0, 10, 0],           // margen arriba/abajo en mm
+      filename: `InstaCheck-${nombre}.pdf`,
+      image: { type: "jpeg", quality: 0.96 },
+      html2canvas: { scale: 2, backgroundColor: "#fff9e7", useCORS: true, scrollY: 0 },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["css", "legacy"] },  // respeta break-inside:avoid
+    };
+    await html2pdf().set(opt).from(wrap).save();
+    restaurar();
+  } catch(e) {
     restaurar();
     showError("intro", "No pude generar el PDF. Intenta de nuevo.");
-  });
+  }
 });
 
 // ---- Arranque: login primero, salvo que ya haya entrado en esta sesión ----
