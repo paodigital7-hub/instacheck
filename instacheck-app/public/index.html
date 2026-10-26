@@ -96,14 +96,33 @@
   .loader p{font-size:15px;margin:6px 0 0}
   .loader .sub{font-size:13px;color:var(--muted);margin-top:4px}
   .error{background:#fdecec;border:1px solid #f3c6c6;color:#9a3030;border-radius:12px;padding:14px 16px;font-size:14px;margin-top:16px;line-height:1.5}
+  .info{background:#f3f0fa;border:1px solid #d9c9ec;color:#5f3073;border-radius:12px;padding:16px 18px;font-size:14px;margin-top:16px;line-height:1.6}
   .hidden{display:none}
+  input[type=password]{width:100%;box-sizing:border-box;padding:13px 15px;border-radius:11px;border:1.5px solid #e6dcc9;font-size:15px;font-family:inherit;color:var(--ink)}
 </style>
 </head>
 <body>
 <div class="wrap">
 
+  <!-- ===== PASO 0: CONTRASEÑA ===== -->
+  <section id="view-login">
+    <header class="hero">
+      <div class="kicker">BONUS · THE CONTENT ROOM</div>
+      <h1 class="title">Insta<span>Check</span></h1>
+      <p>Tu diagnóstico de Instagram, exclusivo para miembros de la comunidad.</p>
+    </header>
+    <div class="card">
+      <label class="lbl" for="pass">Contraseña de la comunidad</label>
+      <p class="hint" style="margin:0 0 12px">La encuentras dentro de The Content Room.</p>
+      <input type="password" id="pass" placeholder="Escribe la contraseña" />
+      <div id="error-login" class="error hidden"></div>
+      <button class="btn" id="enter" style="margin-top:20px">Entrar</button>
+    </div>
+    <div class="foot">InstaCheck · Bonus de The Content Room · Pao Digital</div>
+  </section>
+
   <!-- ===== PASO 1: SUBIR ===== -->
-  <section id="view-intro">
+  <section id="view-intro" class="hidden">
     <header class="hero">
       <div class="kicker">BONUS · THE CONTENT ROOM</div>
       <h1 class="title">Insta<span>Check</span></h1>
@@ -130,6 +149,7 @@
       </div>
 
       <div id="error-intro" class="error hidden"></div>
+      <div id="info-intro" class="info hidden"></div>
 
       <button class="btn" id="go" style="margin-top:28px" disabled>Analizar mi perfil</button>
       <p class="hint" style="text-align:center;margin:14px 0 0">Tu captura se usa solo para el diagnóstico. No se guarda.</p>
@@ -179,6 +199,44 @@
 
 <script>
 const $ = (id) => document.getElementById(id);
+
+// =====================================================================
+// CONFIGURACIÓN — cámbialo aquí fácil
+// =====================================================================
+const PASSWORD = "ContentRoom2026";   // ← cambia la contraseña aquí
+const DIAS_ENTRE_ANALISIS = 7;         // ← 7 = un análisis por semana
+// =====================================================================
+
+// ---- Contraseña ----
+function yaIngreso(){ try { return sessionStorage.getItem("ic_auth") === "1"; } catch(e){ return false; } }
+function marcarIngreso(){ try { sessionStorage.setItem("ic_auth","1"); } catch(e){} }
+
+$("enter").addEventListener("click", intentarEntrar);
+$("pass")?.addEventListener("keydown", (e) => { if(e.key === "Enter") intentarEntrar(); });
+
+function intentarEntrar(){
+  const val = ($("pass").value || "").trim();
+  if(val === PASSWORD){
+    marcarIngreso();
+    hideError("login");
+    show("intro");
+    window.scrollTo(0,0);
+  } else {
+    showError("login", "Contraseña incorrecta. La encuentras dentro de The Content Room.");
+  }
+}
+
+// ---- Límite semanal (por navegador) ----
+function puedeAnalizar(){
+  try {
+    const last = localStorage.getItem("ic_last");
+    if(!last) return true;
+    const diff = Date.now() - Number(last);
+    return diff >= DIAS_ENTRE_ANALISIS * 24 * 60 * 60 * 1000;
+  } catch(e){ return true; }
+}
+function registrarAnalisis(){ try { localStorage.setItem("ic_last", String(Date.now())); } catch(e){} }
+
 let imageData = null, imageMedia = null;
 
 const loadMsgs = [
@@ -225,6 +283,12 @@ function compress(dataUrl){
 $("go").addEventListener("click", analizar);
 
 async function analizar(){
+  // Límite: 1 análisis por semana
+  if(!puedeAnalizar()){
+    showInfo("intro", "Ya hiciste tu análisis de esta semana 💜 Si te quedó una duda, ponla en la pestaña de feedback de The Content Room y entre todas te ayudamos a resolverla.");
+    return;
+  }
+  hideInfo("intro");
   show("loading");
   let i = 0; $("load-msg").textContent = loadMsgs[0];
   const rot = setInterval(() => { i=(i+1)%loadMsgs.length; $("load-msg").textContent = loadMsgs[i]; }, 2500);
@@ -236,6 +300,7 @@ async function analizar(){
     const data = await r.json();
     clearInterval(rot);
     if(!r.ok){ show("intro"); showError("intro", data.error || "Algo salió mal. Intenta de nuevo."); return; }
+    registrarAnalisis(); // sólo cuenta si salió bien
     pintarFicha(data); show("ficha"); window.scrollTo(0,0);
   }catch(e){
     clearInterval(rot); show("intro");
@@ -289,16 +354,22 @@ function toggleArea(i){
 }
 
 function escapeHtml(s){ return (s||"").replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
-function show(v){ ["intro","loading","ficha"].forEach(x => $("view-"+x).classList.add("hidden")); $("view-"+v).classList.remove("hidden"); }
+function show(v){ ["login","intro","loading","ficha"].forEach(x => $("view-"+x).classList.add("hidden")); $("view-"+v).classList.remove("hidden"); }
 function showError(where,msg){ const e=$("error-"+where); e.textContent=msg; e.classList.remove("hidden"); }
 function hideError(where){ $("error-"+where).classList.add("hidden"); }
+function showInfo(where,msg){ const e=$("info-"+where); if(e){ e.textContent=msg; e.classList.remove("hidden"); } }
+function hideInfo(where){ const e=$("info-"+where); if(e) e.classList.add("hidden"); }
 
 $("restart").addEventListener("click", () => {
   imageData=null; $("file").value="";
   $("preview").classList.add("hidden"); $("drop").classList.remove("hidden");
   $("go").disabled=true; $("nombre").value="";
+  hideError("intro"); hideInfo("intro");
   show("intro"); window.scrollTo(0,0);
 });
+
+// ---- Arranque: login primero, salvo que ya haya entrado en esta sesión ----
+if(yaIngreso()) show("intro"); else show("login");
 </script>
 </body>
 </html>
